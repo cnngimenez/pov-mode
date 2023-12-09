@@ -2065,6 +2065,7 @@ Maybe you misspelled it?" target-file))))
 (defun pov-render-file (pov-command file verify-render)
   "Render a file using pov-command."
   ;;XXX Check that there isn't already a render running
+  (setq pov-last-buffer-rendered (current-buffer))
   (when
       (or
        (not pov-current-render-process)
@@ -2137,6 +2138,17 @@ Maybe you misspelled it?" target-file))))
 	  (pop-to-buffer old-buffer))
       (error "No rendering done so far"))))
 
+(defvar pov-last-buffer-rendered nil
+  "Last buffer which calls the povray render program.")
+
+(defun pov-run-after-render ()
+  (with-current-buffer
+      (find-file-other-window
+       (concat (file-name-sans-extension (buffer-file-name pov-last-buffer-rendered))
+               ".png"))
+    (image-transform-fit-to-window))
+  (switch-to-buffer-other-window pov-last-buffer-rendered))
+
 (defun pov-render-sentinel (process event)
  "Sentinel for povray call."
  ;;so we aren't rendering any more ;XXX
@@ -2146,7 +2158,8 @@ Maybe you misspelled it?" target-file))))
 	 (equal 0 (process-exit-status process))
 	 (not pov-errors))
 	(setq pov-rendered-succesfully t)
-	(message "Image rendered succesfully"))
+	(message "Image rendered succesfully")
+    (pov-run-after-render))
        (t
 	(message (concat "Errors in " (process-name process)
 			", press C-c C-c l to display"))
